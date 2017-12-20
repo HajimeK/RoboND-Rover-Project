@@ -74,8 +74,8 @@ def perspect_transform(img, src, dst):
            
     M = cv2.getPerspectiveTransform(src, dst)
     warped = cv2.warpPerspective(img, M, (img.shape[1], img.shape[0]))# keep same size as input image
-    
-    return warped
+    mask = cv2.warpPerspective(np.ones_like(img[:,:,0]), M, (img.shape[1], img.shape[0]))    
+    return warped, mask
 
 
 # Apply the above functions in succession and update the Rover state accordingly
@@ -84,8 +84,20 @@ def perception_step(Rover):
     # TODO: 
     # NOTE: camera image is coming to you in Rover.img
     # 1) Define source and destination points for perspective transform
+    bottom_offset = 6
+    dat_size = 5
+    image = Rover.img
+    source = np.float32([[14, 140], [301 ,140],[200, 96], [118, 96]])
+    destination = np.float32([[image.shape[1]/2 - dst_size, image.shape[0] - bottom_offset],
+                  [image.shape[1]/2 + dst_size, image.shape[0] - bottom_offset],
+                  [image.shape[1]/2 + dst_size, image.shape[0] - 2*dst_size - bottom_offset], 
+                  [image.shape[1]/2 - dst_size, image.shape[0] - 2*dst_size - bottom_offset],
+                  ])
+
     # 2) Apply perspective transform
+    warped, masked = perspect_transform(image, source, destination)
     # 3) Apply color threshold to identify navigable terrain/obstacles/rock samples
+    threshed = color_thresh(warped) #use default thresh
     # 4) Update Rover.vision_image (this will be displayed on left side of screen)
         # Example: Rover.vision_image[:,:,0] = obstacle color-thresholded binary image
         #          Rover.vision_image[:,:,1] = rock_sample color-thresholded binary image
@@ -93,6 +105,7 @@ def perception_step(Rover):
 
     # 5) Convert map image pixel values to rover-centric coords
     # 6) Convert rover-centric pixel values to world coordinates
+    xpix, ypix = rover_coords(threshed)
     # 7) Update Rover worldmap (to be displayed on right side of screen)
         # Example: Rover.worldmap[obstacle_y_world, obstacle_x_world, 0] += 1
         #          Rover.worldmap[rock_y_world, rock_x_world, 1] += 1
@@ -102,8 +115,9 @@ def perception_step(Rover):
     # Update Rover pixel distances and angles
         # Rover.nav_dists = rover_centric_pixel_distances
         # Rover.nav_angles = rover_centric_angles
-    
- 
-    
+    dist, angles = to_polar_coords(xpix, ypix)
+    mean_dir = np.mean(angles)
+    Rover.nav_dists = dist
+    Rover.nav_angles = angles
     
     return Rover
