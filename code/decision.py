@@ -60,6 +60,7 @@ def decision_step(Rover):
                     # Set steer to mean angle
                     Rover.steer = np.clip(np.mean(Rover.nav_angles * 180/np.pi), -15, 15)
                     Rover.mode = 'forward'
+                    
     # Just to make the rover do something 
     # even if no modifications have been made to the code
     else:
